@@ -1,6 +1,19 @@
 using LinearAlgebra
+using PyPlot
 const Tuple2f = Tuple{Float64, Float64}
 @inline dist2(p, q) = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
+
+function tupvec2mat(tupvec::Vector{Tuple2f})
+    N = length(tupvec)
+    mat = zeros(2, N)
+    for i = 1:length(tupvec)
+        for j=1:2
+            mat[j, i] = tupvec[i][j]
+        end
+    end
+    return mat
+end
+
 # World 
 mutable struct World
     b_min
@@ -47,27 +60,23 @@ mutable struct FMTree
 end
 
 function show(this::FMTree)
+    mat =tupvec2mat(this.Pset)
+
     idxset_open = findall(this.bool_open)
     idxset_closed = findall(this.bool_closed)
     idxset_unvisited = findall(this.bool_unvisited)
     idxset_tree = union(idxset_open, idxset_closed)
     for idx in idxset_tree
-        p1 = this.Pset[idx]
-        p2 = this.Pset[this.parent[idx]]
+        p1 = mat[:, idx]
+        p2 = mat[:, this.parent[idx]]
         x = [p1[1], p2[1]]
         y = [p1[2], p2[2]]
         plot(x, y, c=:black)
     end
 
-    for i in idxset_closed
-        scatter(this.Pset[i][1], this.Pset[i][2], c=:orange)
-    end
-    for i in idxset_open
-        scatter(this.Pset[i][1], this.Pset[i][2], c=:green)
-    end
-    for i in idxset_unvisited
-        scatter(this.Pset[i][1], this.Pset[i][2], c=:red)
-    end
+    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:orange)
+    scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:green)
+    scatter(mat[1, idxset_unvisited], mat[2, idxset_unvisited], c=:red)
     xlim(-0.1, 1.1)
     ylim(-0.1, 1.1)
 end
@@ -129,9 +138,9 @@ function extend(this::FMTree)
 end
 
 wor = World([0, 0], [1.0, 1.0])
-t = FMTree(10000, wor)
+t = FMTree(3000, wor)
 
-@time for i=1:10000
+@time for i=1:3000
     println(i)
     extend(t)
 end
