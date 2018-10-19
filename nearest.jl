@@ -21,18 +21,21 @@ function hack()
         push!(x_set, x)
     end
 
-    set = Int64[]
+    set = []
     for j=1:N
-        for i=1:N
+        @time for i=1:N
             dist = mynorm(x_set[i], x_set[1])
             if dist<r
-                push!(set, i)
             end
         end
     end
+    return set
     
 end
 @inline mynorm(p, q) = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
 
+set = hack()
 
-@time hack()
+
+
+
