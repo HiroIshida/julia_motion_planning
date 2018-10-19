@@ -99,20 +99,18 @@ function extend(this::FMTree)
     #find neighbors within Vunvisited
     idxset_unvisited = findall(this.bool_unvisited)
     idxset_neighbor = Int64[]
-    s=0
     for idx in idxset_unvisited
         @inbounds dist = dist2(this.Pset[idx_lowest],this.Pset[idx])
         if dist<radi
             push!(idxset_neighbor, idx)
         end
-        s += 1
     end
    
     #find 
     for idx_neighbor in idxset_neighbor
         #serach candidate points for connection
-        idxset_candidate = [];
-        distset_candidate = [];
+        idxset_candidate = Int64[];
+        distset_candidate = Float64[];
         for idx_open in idxset_open
             @inbounds dist = dist2(this.Pset[idx_open], this.Pset[idx_neighbor])
             if dist<radi
@@ -138,9 +136,9 @@ function extend(this::FMTree)
 end
 
 wor = World([0, 0], [1.0, 1.0])
-t = FMTree(3000, wor)
+t = FMTree(10000, wor)
 
-@time for i=1:3000
+@time for i=1:10000
     println(i)
     extend(t)
 end
