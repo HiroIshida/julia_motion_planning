@@ -175,9 +175,9 @@ v3 = (0.2, 0.5)
 
 Pset = [Polygon([v1, v2, v3])]
 wor = World([0, 0], [1.0, 1.0], Pset)
-t = FMTree((0.1, 0.1), (0.9, 0.9), 5000, wor)
+t = FMTree((0.1, 0.1), (0.9, 0.9), 10000, wor)
 
-for i=1:3000
+@time for i=1:10000
     println(i)
     extend(t)
 end
