@@ -178,7 +178,6 @@ wor = World([0, 0], [1.0, 1.0], Pset)
 t = FMTree((0.1, 0.1), (0.9, 0.9), 10000, wor)
 
 @time for i=1:10000
-    println(i)
     extend(t)
 end
 
