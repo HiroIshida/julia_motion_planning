@@ -1,17 +1,15 @@
 export Polygon, isInside, isIntersect
 
-const Tuple2f = Tuple{Float64, Float64}
-
 struct Polygon
     N::Int 
-    V::Vector{Tuple2f}
+    V::Vector{Vector2}
     function Polygon(V) #V nust be counterclockwise
         N = length(V)
         new(N, V)
     end
 end
 
-@inline function isInside(this::Polygon, q::Tuple2f)
+@inline function isInside(this::Polygon, q::Vector2)
     # note: n'x = n'b
     q_vec = [q[1]; q[2]]
     for n = 1:this.N
@@ -25,7 +23,7 @@ end
     return true
 end
 
-@inline function isIntersect(this::Polygon, q1::Tuple2f, q2::Tuple2f)::Bool
+@inline function isIntersect(this::Polygon, q1::Vector2, q2::Vector2)::Bool
     for n = 1:this.N
         p1 = this.V[n]
         if n<this.N
@@ -51,7 +49,7 @@ function show(this::Polygon, color=:red)
 end
 
 
-@inline function isIntersect(p1::Tuple2f, p2::Tuple2f, q1::Tuple2f, q2::Tuple2f)::Bool
+@inline function isIntersect(p1::Vector2, p2::Vector2, q1::Vector2, q2::Vector2)::Bool
     # solve [p2-p1, q2-q1]*[s; t]=[q1-p1] or A*[s; t]=B
     # for computational efficiency, not using inv() func
     # A = [a, b; c, d]

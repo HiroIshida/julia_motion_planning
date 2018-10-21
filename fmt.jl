@@ -1,12 +1,11 @@
 using LinearAlgebra
-using PyPlot
-using PyCall
-@pyimport matplotlib.patches as patch
+using StaticArrays
+using StaticArrays.ImmutableArrays
 include("geometry.jl")
-const Tuple2f = Tuple{Float64, Float64}
-@inline dist2(p, q) = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
+@fastmath @inline dist2(p, q) = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
+const SVector2f = SVector{2, Float64}
 
-function tupvec2mat(tupvec::Vector{Tuple2f})
+function tupvec2mat(tupvec::Vector{SVector2f})
     N = length(tupvec)
     mat = zeros(2, N)
     for i = 1:length(tupvec)
@@ -26,14 +25,14 @@ mutable struct World
         new(b_min, b_max, Pset)
     end
 end
-@inline function isValid(this::World, q::Tuple2f)
+@inline function isValid(this::World, q::SVector2f)
     ~((this.b_min[1]<q[1]<this.b_max[1])*(this.b_min[2]<q[2]<this.b_max[2])) && return false
     for P in this.Pset
         isInside(P, q) && return false
     end
     return true
 end
-@inline function isIntersect(this::World, q1::Tuple2f, q2::Tuple2f)
+@inline function isIntersect(this::World, q1::SVector2f, q2::SVector2f)
     for P in this.Pset
         isIntersect(P, q1, q2) && return true
     end
@@ -58,10 +57,10 @@ end
 
 # FMTree class
 mutable struct FMTree
-    x_init::Tuple2f
-    x_goal::Tuple2f
+    x_init::SVector2f
+    x_goal::SVector2f
     N #number of samples
-    Pset::Vector{Tuple2f}
+    Pset::Vector{SVector2f}
     cost::Vector{Float64} #cost 
     parent::Vector{Int64} 
     bool_unvisited::BitVector #logical value for Vunvisited
@@ -70,11 +69,11 @@ mutable struct FMTree
     world::World # simulation world config
 
     function FMTree(x_init, x_goal, N, world)
-        Pset = Tuple2f[]
+        Pset = SVector2f[]
         push!(Pset, x_init)
         for n = 2:N
             while(true)
-                p = (rand(), rand())
+                p = SVector2f(rand(), rand())
                 if isValid(world, p)
                     push!(Pset, p)
                     break
@@ -171,16 +170,15 @@ end
 
 v1 = (0.25, 0.25)
 v2 = (0.5, 0.5)
-v3 = (0.2, 0.5)
+v2 = (0.2, 0.5)
 
-Pset = [Polygon([v1, v2, v3])]
+Pset = []
 wor = World([0, 0], [1.0, 1.0], Pset)
-t = FMTree((0.1, 0.1), (0.9, 0.9), 10000, wor)
+t = FMTree([0.1, 0.1], [0.9, 0.9], 10000, wor)
 
 @time for i=1:10000
     extend(t)
 end
-
 
 
 
