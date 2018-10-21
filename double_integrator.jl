@@ -70,10 +70,10 @@ function filter_freachable(s_set::Vector{SVector4f}, s_c::SVector4f, r::Float64,
     @views v_c = SVector2f(s_c[3:4])
     xmin, xmax, vmin, vmax = forward_reachable_box(x_c, v_c,r)
     function isinside(s::SVector4f)
-        !(xmin[1]<s[1]<xmax[1]) && return false
-        !(xmin[2]<s[2]<xmax[2]) && return false
-        !(vmin[1]<s[3]<vmax[1]) && return false
-        !(vmin[2]<s[4]<vmax[2]) && return false
+        @inbounds !(xmin[1]<s[1]<xmax[1]) && return false
+        @inbounds !(xmin[2]<s[2]<xmax[2]) && return false
+        @inbounds !(vmin[1]<s[3]<vmax[1]) && return false
+        @inbounds !(vmin[2]<s[4]<vmax[2]) && return false
         return true
     end
     for s in s_set
@@ -82,31 +82,21 @@ function filter_freachable(s_set::Vector{SVector4f}, s_c::SVector4f, r::Float64,
     return s_set_filtered
 end
 
-
-function hage()
-    N = 10^6
-    s = 0.0
-    x0 = SVector2f(0.0, 0.0)
-    v0 = SVector2f(0.0, 0.0)
-    x1 = SVector2f(0.0, 0.0)
-    v1 = SVector2f(0.0, 0.0)
-    s = 0.0
-    for n = 1:N
-        find_tau_star(x0, v0, x1, v1)
-    end
-    #ans = forward_reachable_box(x0, v0, 1.0)
-end
-
 function test()
-    N = 10^7
+    N = 5000
     s_set = SVector4f[]
     for i = 1:N
         push!(s_set, SVector4f(rand()-0.5, rand()-0.5, 3*rand()-1.5, 3*rand()-1.5))
     end
     s_c = SVector4f(+0, +0, 0, 0)
-    @time s_filter = filter_freachable(s_set, s_c, 1.3)
-    @time s_filter2 = filter_freachable_exact(s_set, s_c, 1.3)
+    @time for i = 1:N
+        s_filter = filter_freachable(s_set, s_c, 1.3)
+    end
+    @time for i = 1:N
+        s_filter2 = filter_freachable_exact(s_set, s_c, 1.3)
+    end
 
+    """
     ss = zeros(2, length(s_filter))
     ss2 = zeros(2, length(s_filter2))
     for i = 1:length(s_filter)
@@ -120,5 +110,6 @@ function test()
     xlim(-0.6, 0.6)
     ylim(-0.6, 0.6)
     #return s_filter
+    """
 end
 
