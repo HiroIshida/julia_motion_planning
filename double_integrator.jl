@@ -1,5 +1,4 @@
 const Tuple2f = Tuple{Float64, Float64}
-
 Base.:+(x::Tuple2f, y::Tuple2f) = (x[1]+y[1], x[2]+y[2])
 Base.:-(x::Tuple2f, y::Tuple2f) = (x[1]-y[1], x[2]-y[2])
 Base.:-(x::Tuple2f) = (-x[1], -x[2])
@@ -20,18 +19,14 @@ function find_tau_star(x0::Tuple2f, v0::Tuple2f, x1::Tuple2f, v1::Tuple2f)
 
     # f(t) correspoding to cost(t)
     f(t) = t + dot(v01, 4*v01/t-6(-v0+x01)/t^2)+dot(-6*v01/t^2+12(x01-v0*t)/t^3, -v0*t+x01)
-    function df(t)
-        return t*t*t*t+p*t*t+q*t+r # df(t)/dt
-    end
-    function ddf(t)
-        return 4.0*t*t*t+2*p*t+q # ddf(t)/dt^2
-    end
+    @fastmath df(t) = t^4+p*t*t+q*t+r # df(t)/dt
+    @fastmath ddf(t) = 4.0*t*t*t+2*p*t+q # ddf(t)/dt^2
+
     ## lets find the root of df(t)/dt, which minimize f(t)
     # solve it by combination of bisection and Newton
     eps = 0.05
     right = 5
     left = 0.01
-
     est = 0.5*(right + left) # initial estimation for the root
     for itr = 1:20
         df_ddf = df(est)/ddf(est)
@@ -53,7 +48,7 @@ function func()
     N = 1000000
     s = 0.0
     for i=1:N
-        ans = find_tau_star((0.0, 0.0), (0.0, 0.0), (0.2, 0.2), (0.0, 0.0))
+        ans = find_tau_star((0.0, 0.0), (0.5, 0.5), (0.2, 0.2), (-0.2, 0.0))
         s += ans[1]
     end
     return s

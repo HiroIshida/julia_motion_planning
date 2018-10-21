@@ -16,6 +16,7 @@ vector<double> find_tau_star(const Vector4d& s0, const Vector4d& s1){
   float p = -4*(v0.dot(v0)+v1.dot(v1)+v0.dot(v1));
   float q = 24*(v1+v0).dot(x01);
   float r = -36*(x01).dot(x01);
+  cout << r<<endl;
 
   // f(x)/f(x)' term of newton's method
   auto divide = [p, q, r](float t){
