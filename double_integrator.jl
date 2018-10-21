@@ -1,25 +1,6 @@
-const Tuple2f = Tuple{Float64, Float64}
-Base.:+(x::Tuple2f, y::Tuple2f) = (x[1]+y[1], x[2]+y[2])
-Base.:+(x::Tuple2f, y::Float64) = (x[1]+y, x[2]+y)
-Base.:+(y::Float64, x::Tuple2f) = (x[1]+y, x[2]+y)
-
-Base.:-(x::Tuple2f, y::Tuple2f) = (x[1]-y[1], x[2]-y[2])
-Base.:-(x::Tuple2f, y::Float64) = (x[1]-y, x[2]-y)
-Base.:-(y::Float64, x::Tuple2f) = (y-x[1], y-x[2])
-
-Base.:-(x::Tuple2f) = (-x[1], -x[2])
-Base.:/(x::Tuple2f, y::Float64) = (x[1]/y, x[2]/y)
-Base.:/(x::Tuple2f, y::Int64) = (x[1]/y, x[2]/y)
-Base.:*(x::Tuple2f, y::Float64) = (x[1]*y, x[2]*y)
-Base.:*(x::Tuple2f, y::Int64) = (x[1]*y, x[2]*y)
-Base.:*(x::Float64, y::Tuple2f) = (x*y[1], x*y[2])
-Base.:*(x::Int64, y::Tuple2f) = (x*y[1], x*y[2])
-dot(x::Tuple2f, y::Tuple2f) = x[1]*y[1]+x[2]*y[2]
-
-broadcast(*, x::Tuple2f, y::Tuple2f) = (x[1]*y[1], x[2]*y[2])
-broadcast(sqrt, x::Tuple2f) = (sqrt(x[1]), sqrt(x[2]))
-
-
+using LinearAlgebra
+using StaticArrays
+const SVector2f = SVector{2, Float64}
 
 function bisection_newton(f, df, left::Float64, right::Float64, eps=0.05, itr_max=20)::Float64
     x_est = (left + right)*0.5
@@ -35,7 +16,7 @@ function bisection_newton(f, df, left::Float64, right::Float64, eps=0.05, itr_ma
     return x_est
 end
 
-function find_tau_star(x0::Tuple2f, v0::Tuple2f, x1::Tuple2f, v1::Tuple2f)
+function find_tau_star(x0::SVector2f, v0::SVector2f, x1::SVector2f, v1::SVector2f)
     x01 = x1 - x0
     v01 = v1 - v0
     p = -4*(dot(v0, v0)+dot(v1, v1)+dot(v0, v1))
@@ -52,11 +33,7 @@ function find_tau_star(x0::Tuple2f, v0::Tuple2f, x1::Tuple2f, v1::Tuple2f)
 end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013)
-function forward_reachable_box(x0::Tuple2f, v0::Tuple2f, r::Float64)
-    r = 2.0
-    x0 = (0.0, 0.0)
-    v0 = (0.0, 0.0)
-    #tau = 2/2*(r-v0
+function forward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
     tau_x_plus = 2/3*(r-v0.^2 + v0.*sqrt.(r+v0.^2))
     tau_x_minus = 2/3*(r-v0.^2 - v0.*sqrt.(r+v0.^2))
     xmax = v0.*tau_x_plus + x0 + sqrt.(1/3*(tau_x_plus.^2).*(r-tau_x_plus))
@@ -82,8 +59,8 @@ function is_forwardreachable(xq, vq, x_c, v_c, r)
 end
 
 function fliter_forwardreachable(s_set, s_c, r)
-    x_set_filtered = Tuple2f[]
-    v_set_filtered = Tuple2f[]
+    x_set_filtered = SVector2f[]
+    v_set_filtered = SVector2f[]
     for s in s_set
 
     end
@@ -93,14 +70,15 @@ end
 function hage()
     N = 10^6
     s = 0.0
-    for i=1:N
-        ans = find_tau_star((0.0, 0.0), (0.0, 0.0), (0.2, 0.2), (0.01, 0.05))
+    x0 = SVector2f(0.0, 0.0)
+    v0 = SVector2f(0.0, 0.0)
+    x1 = SVector2f(0.0, 0.0)
+    v1 = SVector2f(0.0, 0.0)
+    s = 0.0
+    for n = 1:N
+        find_tau_star(x0, v0, x1, v1)
     end
-    ans = find_tau_star((0.0, 0.0), (0.0, 0.0), (0.2, 0.2), (0.01, 0.05))
-    x0 = (0.0, 0.0)
-    v0 = (0.0, 0.0)
-    forward_reachable_box(x0, v0, 1.0)
-    println(ans)
+    #ans = forward_reachable_box(x0, v0, 1.0)
 end
 
 @time hage()
