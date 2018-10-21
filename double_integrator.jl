@@ -1,6 +1,11 @@
 using LinearAlgebra
 using StaticArrays
+using PyPlot
 const SVector2f = SVector{2, Float64}
+const SVector4f = SVector{4, Float64}
+const s2f = SVector2f
+const s4f = SVector4f
+
 
 function bisection_newton(f, df, left::Float64, right::Float64, eps=0.05, itr_max=20)::Float64
     x_est = (left + right)*0.5
@@ -22,7 +27,7 @@ function find_tau_star(x0::SVector2f, v0::SVector2f, x1::SVector2f, v1::SVector2
     p = -4*(dot(v0, v0)+dot(v1, v1)+dot(v0, v1))
     q = 24*dot(v0+v1, x01)
     r = -36*dot(x01, x01)
-    cost(t) = t + dot(v01, 4.0*v01/t-6(-v0+x01)/t^2)+dot(-6*v01/t^2+12(x01-v0*t)/t^3, -v0*t+x01)
+    cost(t) = t + dot(v01, 4.0*v01/t-6(-v0*t+x01)/t^2)+dot(-6*v01/t^2+12(x01-v0*t)/t^3, -v0*t+x01)
     @fastmath d_cost(t) = t^4+p*t*t+q*t+r # df(t)/dt
     @fastmath dd_cost(t) = 4.0*t*t*t+2*p*t+q # ddf(t)/dt^2
 
@@ -34,36 +39,47 @@ end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013)
 function forward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
-    tau_x_plus = 2/3*(r-v0.^2 + v0.*sqrt.(r+v0.^2))
-    tau_x_minus = 2/3*(r-v0.^2 - v0.*sqrt.(r+v0.^2))
-    xmax = v0.*tau_x_plus + x0 + sqrt.(1/3*(tau_x_plus.^2).*(r-tau_x_plus))
-    xmin = v0.*tau_x_minus + x0 - sqrt.(1/3*(tau_x_plus.^2).*(r-tau_x_minus))
+    @fastmath tau_x_plus = 2/3*(-(v0.^2).+r + v0.*sqrt.((v0.^2).+r))
+    @fastmath tau_x_minus = 2/3*(-(v0.^2).+r - v0.*sqrt.((v0.^2).+r))
+    @fastmath xmax = v0.*tau_x_plus + x0 + sqrt.(1/3*(tau_x_plus.^2).*(-tau_x_plus.+r))
+    @fastmath xmin = v0.*tau_x_minus + x0 - sqrt.(1/3*(tau_x_plus.^2).*(-tau_x_minus.+r))
 
-    tau_v_plus = 0.5*r
-    vmax_tmp = v0 + sqrt.(tau_v_plus.*(r-tau_v_plus))
-    vmin_tmp = v0 - sqrt.(tau_v_plus.*(r-tau_v_plus))
-    vmax = (vmax_tmp, vmax_tmp)
-    vmin = (vmin_tmp, vmin_tmp)
+    @fastmath tau_v_plus = 0.5*r
+    @fastmath vmax = v0 .+ sqrt.(tau_v_plus.*(-tau_v_plus.+r))
+    @fastmath vmin = v0 .- sqrt.(tau_v_plus.*(-tau_v_plus.+r))
     return xmin, xmax, vmin, vmax
 end
 
-function is_forwardreachable(xq, vq, x_c, v_c, r)
-    # xq, vq (querry)
-    #x_c, v_c (start point)
-    xmin, xmax, vmin, vmax = forward_reachable_box(xc, vc,r)
-    !(x_min[1]<xs[1]<x_max[1]) && return false
-    !(x_min[2]<xs[2]<x_max[2]) && return false
-    !(v_min[1]<vs[1]<v_mav[1]) && return false
-    !(v_min[2]<vs[2]<v_mav[2]) && return false
-    return true
+
+function filter_freachable_exact(s_set, s_c, r)
+    s_set_filtered = SVector4f[]
+    for s in s_set
+        @views xq = SVector2f(s[1:2])
+        @views vq = SVector2f(s[3:4])
+        @views xc = SVector2f(s_c[1:2])
+        @views vc = SVector2f(s_c[3:4])
+        ans = find_tau_star(xc, vc, xq, vq)
+        ans[2]<r && push!(s_set_filtered, s)
+    end
+    return s_set_filtered
 end
 
-function fliter_forwardreachable(s_set, s_c, r)
-    x_set_filtered = SVector2f[]
-    v_set_filtered = SVector2f[]
-    for s in s_set
-
+function filter_freachable(s_set::Vector{SVector4f}, s_c::SVector4f, r::Float64, approx = true)
+    s_set_filtered = SVector4f[]
+    @views x_c = SVector2f(s_c[1:2])
+    @views v_c = SVector2f(s_c[3:4])
+    xmin, xmax, vmin, vmax = forward_reachable_box(x_c, v_c,r)
+    function isinside(s::SVector4f)
+        !(xmin[1]<s[1]<xmax[1]) && return false
+        !(xmin[2]<s[2]<xmax[2]) && return false
+        !(vmin[1]<s[3]<vmax[1]) && return false
+        !(vmin[2]<s[4]<vmax[2]) && return false
+        return true
     end
+    for s in s_set
+        isinside(s) && push!(s_set_filtered, s)
+    end
+    return s_set_filtered
 end
 
 
@@ -81,7 +97,40 @@ function hage()
     #ans = forward_reachable_box(x0, v0, 1.0)
 end
 
-@time hage()
+function test()
+    N = 10^6
+    s_set = SVector4f[]
+    for i = 1:N
+        push!(s_set, SVector4f(rand()-0.5, rand()-0.5, rand()-0.5, rand()-0.5))
+    end
+    s_c = SVector4f(-0.2, -0.2, 0.2, 0.2)
+    @time s_filter = filter_freachable(s_set, s_c, 1.3)
+    @time s_filter2 = filter_freachable_exact(s_set, s_c, 1.3)
 
+    ss = zeros(2, length(s_filter))
+    ss2 = zeros(2, length(s_filter2))
+    for i = 1:length(s_filter)
+        ss[:, i] = s_filter[i][1:2]
+    end
+    for i = 1:length(s_filter2)
+        ss2[:, i] = s_filter2[i][1:2]
+    end
+    scatter(ss[1, :], ss[2, :], s=3)
+    scatter(ss2[1, :], ss2[2, :], s=3)
+    xlim(-0.6, 0.6)
+    ylim(-0.6, 0.6)
+    #return s_filter
 
+    
+    """
+    x = SVector2f(0.5, 0.5)
+    v = SVector2f(0, 0)
+    @time for i=1:N
+        @views @inbounds a = SVector2f(s_set[i][1:2])
+        @views @inbounds b = SVector2f(s_set[i][3:4])
+        ans = forward_reachable_box(a, b, 0.5)
+    end
+    return ans
+    """
+end
 
