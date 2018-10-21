@@ -42,7 +42,7 @@ function forward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
     @fastmath tau_x_plus = 2/3*(-(v0.^2).+r + v0.*sqrt.((v0.^2).+r))
     @fastmath tau_x_minus = 2/3*(-(v0.^2).+r - v0.*sqrt.((v0.^2).+r))
     @fastmath xmax = v0.*tau_x_plus + x0 + sqrt.(1/3*(tau_x_plus.^2).*(-tau_x_plus.+r))
-    @fastmath xmin = v0.*tau_x_minus + x0 - sqrt.(1/3*(tau_x_plus.^2).*(-tau_x_minus.+r))
+    @fastmath xmin = v0.*tau_x_minus + x0 - sqrt.(1/3*(tau_x_minus.^2).*(-tau_x_minus.+r))
 
     @fastmath tau_v_plus = 0.5*r
     @fastmath vmax = v0 .+ sqrt.(tau_v_plus.*(-tau_v_plus.+r))
@@ -98,12 +98,12 @@ function hage()
 end
 
 function test()
-    N = 10^6
+    N = 10^7
     s_set = SVector4f[]
     for i = 1:N
-        push!(s_set, SVector4f(rand()-0.5, rand()-0.5, rand()-0.5, rand()-0.5))
+        push!(s_set, SVector4f(rand()-0.5, rand()-0.5, 3*rand()-1.5, 3*rand()-1.5))
     end
-    s_c = SVector4f(-0.2, -0.2, 0.2, 0.2)
+    s_c = SVector4f(+0, +0, 0, 0)
     @time s_filter = filter_freachable(s_set, s_c, 1.3)
     @time s_filter2 = filter_freachable_exact(s_set, s_c, 1.3)
 
@@ -120,17 +120,5 @@ function test()
     xlim(-0.6, 0.6)
     ylim(-0.6, 0.6)
     #return s_filter
-
-    
-    """
-    x = SVector2f(0.5, 0.5)
-    v = SVector2f(0, 0)
-    @time for i=1:N
-        @views @inbounds a = SVector2f(s_set[i][1:2])
-        @views @inbounds b = SVector2f(s_set[i][3:4])
-        ans = forward_reachable_box(a, b, 0.5)
-    end
-    return ans
-    """
 end
 
