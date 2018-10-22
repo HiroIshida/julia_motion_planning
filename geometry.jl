@@ -25,10 +25,10 @@ struct Rectangle <: Polygonic
     N::Int
     V::Vector{Vec2f}
     function Rectangle(center::T, width::Float64, height::Float64) where {T<:AbstractVector}
-        V1 = Vec2f(center + [-width -height]*0.5)
-        V2 = Vec2f(center + [+width -height]*0.5)
-        V3 = Vec2f(center + [+width +height]*0.5)
-        V4 = Vec2f(center + [-width +height]*0.5)
+        V1 = Vec2f(center + [-width, -height]*0.5)
+        V2 = Vec2f(center + [+width, -height]*0.5)
+        V3 = Vec2f(center + [+width, +height]*0.5)
+        V4 = Vec2f(center + [-width, +height]*0.5)
         new(4, [V1, V2, V3, V4])
     end
 end
