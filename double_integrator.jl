@@ -38,6 +38,7 @@ function find_tau_star(x0::SVector2f, v0::SVector2f, x1::SVector2f, v1::SVector2
 end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013)
+"""
 function forward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
     @fastmath tau_x_plus = 2/3*(-(v0.^2).+r + v0.*sqrt.((v0.^2).+r))
     @fastmath tau_x_minus = 2/3*(-(v0.^2).+r - v0.*sqrt.((v0.^2).+r))
@@ -49,6 +50,32 @@ function forward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
     @fastmath vmin = v0 .- sqrt.(tau_v_plus.*(-tau_v_plus.+r))
     return xmin, xmax, vmin, vmax
 end
+"""
+
+function forward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
+    @fastmath tau_x_plus = 2/3*(-(v0.^2).+r + v0.*sqrt.((v0.^2).+r))
+    @fastmath tau_x_minus = 2/3*(-(v0.^2).+r - v0.*sqrt.((v0.^2).+r))
+    @fastmath xmax = v0.*tau_x_plus + x0 + sqrt.(1/3*(tau_x_plus.^2).*(-tau_x_plus.+r))
+    @fastmath xmin = v0.*tau_x_minus + x0 - sqrt.(1/3*(tau_x_minus.^2).*(-tau_x_minus.+r))
+
+    @fastmath tau_v_plus = 0.5*r
+    @fastmath vmax = v0 .+ sqrt.(tau_v_plus.*(-tau_v_plus.+r))
+    @fastmath vmin = v0 .- sqrt.(tau_v_plus.*(-tau_v_plus.+r))
+    return xmin, xmax, vmin, vmax
+end
+
+function backward_reachable_box(x0::SVector2f, v0::SVector2f, r::Float64)
+    @fastmath tau_x_plus = 2/3*((v0.^2).-r + v0.*sqrt.((v0.^2).+r))
+    @fastmath tau_x_minus = 2/3*((v0.^2).-r - v0.*sqrt.((v0.^2).+r))
+    @fastmath xmax = v0.*tau_x_plus + x0 + sqrt.(1/3*(tau_x_plus.^2).*(tau_x_plus.+r))
+    @fastmath xmin = v0.*tau_x_minus + x0 - sqrt.(1/3*(tau_x_minus.^2).*(tau_x_minus.+r))
+
+    @fastmath tau_v_plus = 0.5*r
+    @fastmath vmax = v0 .+ sqrt.(tau_v_plus.*(tau_v_plus.+r))
+    @fastmath vmin = v0 .- sqrt.(tau_v_plus.*(tau_v_plus.+r))
+    return xmin, xmax, vmin, vmax
+end
+
 
 
 function filter_freachable_exact(s_set, s_c, r)
@@ -64,11 +91,15 @@ function filter_freachable_exact(s_set, s_c, r)
     return s_set_filtered
 end
 
-function filter_freachable(s_set::Vector{SVector4f}, s_c::SVector4f, r::Float64, approx = true)
+function filter_freachable(s_set::Vector{SVector4f}, s_c::SVector4f, r::Float64, ForR::Symbol)
     s_set_filtered = SVector4f[]
     @views x_c = SVector2f(s_c[1:2])
     @views v_c = SVector2f(s_c[3:4])
-    xmin, xmax, vmin, vmax = forward_reachable_box(x_c, v_c,r)
+    xmin, xmax, vmin, vmax = ((ForR==:F) ?
+                              forward_reachable_box(x_c, v_c, r)
+                              :
+                              backward_reachable_box(x_c, v_c, r))
+                              
     function isinside(s::SVector4f)
         @inbounds !(xmin[1]<s[1]<xmax[1]) && return false
         @inbounds !(xmin[2]<s[2]<xmax[2]) && return false
@@ -83,20 +114,15 @@ function filter_freachable(s_set::Vector{SVector4f}, s_c::SVector4f, r::Float64,
 end
 
 function test()
-    N = 5000
+    N = 10^5
     s_set = SVector4f[]
     for i = 1:N
         push!(s_set, SVector4f(rand()-0.5, rand()-0.5, 3*rand()-1.5, 3*rand()-1.5))
     end
-    s_c = SVector4f(+0, +0, 0, 0)
-    @time for i = 1:N
-        s_filter = filter_freachable(s_set, s_c, 1.3)
-    end
-    @time for i = 1:N
-        s_filter2 = filter_freachable_exact(s_set, s_c, 1.3)
-    end
+    s_c = SVector4f(+0, +0, 0.2, 0.2)
+    s_filter = filter_freachable(s_set, s_c, 1.0, :F)
+    s_filter2 = filter_freachable(s_set, s_c, 1.0, :B)
 
-    """
     ss = zeros(2, length(s_filter))
     ss2 = zeros(2, length(s_filter2))
     for i = 1:length(s_filter)
@@ -110,6 +136,5 @@ function test()
     xlim(-0.6, 0.6)
     ylim(-0.6, 0.6)
     #return s_filter
-    """
 end
 
