@@ -3,8 +3,6 @@ using StaticArrays
 using PyPlot
 const Vec2f = SVector{2, Float64}
 const Vec4f = SVector{4, Float64}
-const s2f = Vec2f
-const s4f = Vec4f
 
 
 @inline function bisection_newton(f, df, left::Float64, right::Float64, eps=0.05, itr_max=20)::Float64
@@ -115,7 +113,28 @@ function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64},
     return idx_filter, dist_filter 
 end
 
-function trajectory(s0, s1, tau)
+# see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013), Eq.(20)
+function trajectory(s0::Vec4f, s1::Vec4f, tau)
+    x0 = Vec2f(s0[1:2])
+    v0 = Vec2f(s0[3:4])
+    x1 = Vec2f(s1[1:2])
+    v1 = Vec2f(s1[3:4])
+    x01 = x1 - x0
+    v01 = v1 - v0
+    d = Vec4f([-6*v01/tau^2 + 12*(-6*tau*v0+x01)/tau^3;
+               4*v01/tau - 6*(-tau*v0+x01)/tau^2])
+
+    function f(t)
+        t_dif = t - tau
+        eye = Matrix{Int}(I, 2, 2)
+        M_left = vcat(hcat(eye, eye*t_dif), hcat(eye*0, eye))
+        M_right = vcat(hcat(eye*(-t_dif^3)*(1.0/6.0), eye*t_dif^2*0.5),
+                       hcat(eye*(-t_dif^2*0.5), eye*t_dif))
+        return  M_left*s1 + M_right*d
+    end
+
+    return f
+end
 
 function test()
     N = 10^4
@@ -145,4 +164,17 @@ function test()
     ylim(-0.6, 0.6)
     return setA
 end
+
+s0 = Vec4f(0, 0, 0, 0) 
+s1 = Vec4f(0.2, 0.2, -0.5, 0)
+f =trajectory(s0, s1, 1.2)
+
+N = 30
+data = zeros(4, N)
+for i=1:N
+    t = i*1.2/N
+    data[:, i] = f(t)
+end
+plot(data[1, :], data[2, :])
+
 
