@@ -1,11 +1,12 @@
 using LinearAlgebra
 using StaticArrays
 using StaticArrays.ImmutableArrays
-using PyPlot
+#using PyPlot
 include("geometry.jl")
-@inbounds @inline dist2(p, q) = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
 const Vec2f = SVector{2, Float64}
 const Vec4f = SVector{4, Float64}
+
+@inbounds @inline dist2(p, q)::Float64 = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
 
 mutable struct World
     x_min
@@ -58,12 +59,13 @@ mutable struct FMTree
     Pset::Vector{Vec4f}
     cost::Vector{Float64} #cost 
     parent::Vector{Int64} 
-    bool_unvisited::BitVector #logical value for Vunvisited
+    bool_unvisit::BitVector #logical value for Vunvisit
     bool_open::BitVector #logical value for Open
     bool_closed::BitVector #logical value for Open
     world::World # simulation world config
+    metric
 
-    function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
+    function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world, metric)
         Pset = Vec4f[]
         push!(Pset, s_init)
         myrn(min, max) = min + (max-min)*rand()
@@ -81,12 +83,12 @@ mutable struct FMTree
         end
         cost = zeros(N)
         parent = ones(Int, N)
-        bool_unvisited = trues(N)
+        bool_unvisit = trues(N)
         bool_closed = falses(N)
         bool_open = falses(N)
         bool_open[1] = true
         new(s_init, s_goal,
-            N, Pset, cost, parent, bool_unvisited, bool_open, bool_closed, world)
+            N, Pset, cost, parent, bool_unvisit, bool_open, bool_closed, world, metric)
     end
 end
 
@@ -99,7 +101,7 @@ function show(this::FMTree)
     end
     idxset_open = findall(this.bool_open)
     idxset_closed = findall(this.bool_closed)
-    idxset_unvisited = findall(this.bool_unvisited)
+    idxset_unvisit = findall(this.bool_unvisit)
     idxset_tree = union(idxset_open, idxset_closed)
     for idx in idxset_tree
         p1 = mat[:, idx]
@@ -110,7 +112,7 @@ function show(this::FMTree)
     end
     scatter(mat[1, idxset_open], mat[2, idxset_open], c=:green, s=4)
     scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:black, s=5)
-    scatter(mat[1, idxset_unvisited], mat[2, idxset_unvisited], c=:orange, s=5)
+    scatter(mat[1, idxset_unvisit], mat[2, idxset_unvisit], c=:orange, s=5)
     xlim(this.world.x_min[1]-0.05, this.world.x_max[1]+0.05)
     ylim(this.world.x_min[2]-0.05, this.world.x_max[2]+0.05)
 end
@@ -118,57 +120,57 @@ end
 function cleanup(this::FMTree)
     this.cost = zeros(this.N)
     this.bool_open = falses(this.N); this.bool_open[1] = true
-    this.bool_unvisited = trues(this.N)
+    this.bool_unvisit = trues(this.N)
     this.bool_closed = falses(this.N)
 end
 
+function find_near_idx(s_center::Vec4f, Sset::Vector{Vec4f}, idxlst::Vector{Int64}, r::Float64)
+    idxset_near = Int64[]
+    distset_near = Float64[]
+    for idx in idxlst
+        @inbounds dist = dist2(s_center, Sset[idx])
+        if dist<r
+            push!(idxset_near, idx)
+            push!(distset_near, dist)
+        end
+    end
+    return idxset_near, distset_near
+end
 
 function extend(this::FMTree)
-    radi = 0.1
+    r = 0.1
 
     #select the lowest-cost node 
     idxset_open = findall(this.bool_open)
     idx_lowest = idxset_open[findmin(this.cost[idxset_open])[2]]
 
-    #find neighbors within Vunvisited
-    idxset_unvisited = findall(this.bool_unvisited)
-    idxset_neighbor = Int64[]
-    for idx in idxset_unvisited
-        @inbounds dist = dist2(this.Pset[idx_lowest],this.Pset[idx])
-        if dist<radi
-            push!(idxset_neighbor, idx)
-        end
-    end
+    #find nears within Vunvisit
+    idxset_unvisit = findall(this.bool_unvisit)
+    idxset_near, distset_near = find_near_idx(this.Pset[idx_lowest], this.Pset, idxset_unvisit, r)
    
     #find 
-    for idx_neighbor in idxset_neighbor
-        #serach candidate points for connection
-        idxset_candidate = Int64[];
-        distset_candidate = Float64[];
-        for idx_open in idxset_open
-            @inbounds dist = dist2(this.Pset[idx_open], this.Pset[idx_neighbor])
-            if dist<radi
-                push!(idxset_candidate, idx_open)
-                push!(distset_candidate, dist)
-            end
-        end
-        isempty(idxset_candidate) && return
+    for idx_near in idxset_near
+        #serach cand points for connection
+        idxset_cand, distset_cand = find_near_idx(this.Pset[idx_near], this.Pset, idxset_open, r)
+        isempty(idxset_cand) && return
 
         #cost-optimal connection
-        tmp = findmin(this.cost[idxset_candidate] + distset_candidate)
+        tmp = findmin(this.cost[idxset_cand] + distset_cand)
         cost_new = tmp[1];
-        idx_parent = idxset_candidate[tmp[2]]
-        if ~isIntersect(this.world, this.Pset[idx_neighbor], this.Pset[idx_parent])
-            this.bool_unvisited[idx_neighbor] = false
-            this.bool_open[idx_neighbor] = true
-            this.cost[idx_neighbor] = cost_new
-            this.parent[idx_neighbor] = idx_parent
+        idx_parent = idxset_cand[tmp[2]]
+        if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
+            this.bool_unvisit[idx_near] = false
+            this.bool_open[idx_near] = true
+            this.cost[idx_near] = cost_new
+            this.parent[idx_near] = idx_parent
         end
     end
 
     this.bool_open[idx_lowest] = false
     this.bool_closed[idx_lowest] = true
 end
+
+
 
 v1 = (0.25, 0.25)
 v2 = (0.5, 0.5)
@@ -186,7 +188,7 @@ wor = World(x_min, x_max, v_min, v_max, Pset)
 
 s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
 s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
-t = FMTree(s_init, s_goal, 3000, wor)
+t = FMTree(s_init, s_goal, 3000, wor, dist2)
 
 @time for i=1:2000
     extend(t)
