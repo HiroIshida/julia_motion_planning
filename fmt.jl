@@ -137,6 +137,20 @@ function find_near_idx(s_center::Vec4f, Sset::Vector{Vec4f}, idxlst::Vector{Int6
     return idxset_near, distset_near
 end
 
+function find_near_idx(s_center::Vec4f, Sset::Vector{Vec4f}, idxlst::Vector{Int64}, r::Float64, ForR::Symbol)
+    idxset_near = Int64[]
+    distset_near = Float64[]
+    for idx in idxlst
+        @inbounds dist = dist2(s_center, Sset[idx])
+        if dist<r
+            push!(idxset_near, idx)
+            push!(distset_near, dist)
+        end
+    end
+    return idxset_near, distset_near
+end
+
+
 function extend(this::FMTree)
     r = 0.1
 
