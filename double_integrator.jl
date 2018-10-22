@@ -20,15 +20,14 @@ const s4f = Vec4f
     end
     return x_est
 end
-"""
+
 @inline function cost_optimal(s0::Vec4f, s1::Vec4f)
-    a = Vec2f(s0[1:2])
-    b = Vec2f(s0[3:4])
-    c = Vec2f(s1[1:2])
-    d =Vec2f(s1[3:4])
+    @views a = Vec2f(s0[1:2])
+    @views b = Vec2f(s0[3:4])
+    @views c = Vec2f(s1[1:2])
+    @views d =Vec2f(s1[3:4])
     return cost_optimal(a, b, c, d)
 end
-"""
 
 @inline function cost_optimal(x0::Vec2f, v0::Vec2f, x1::Vec2f, v1::Vec2f)
     x01 = x1 - x0
@@ -103,12 +102,13 @@ function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64},
     idx_filtered = Int64[]
     for idx in idxset
         @inbounds s = Sset[idx]
-        isinside(s) && push!(idx_filtered, idx)
-        """
         if isinside(s)
-            @views cost_optimal(s, s_c)<r && push!(idx_filtered, idx)
+            if ForR==:B
+                cost_optimal(s, s_c)<r && push!(idx_filtered, idx)
+            else
+                cost_optimal(s_c, s)<r && push!(idx_filtered, idx)
+            end
         end
-        """
     end
     return idx_filtered
 end
@@ -136,6 +136,7 @@ function test()
     end
     scatter(setA[1, :], setA[2, :], s=3)
     scatter(setB[1, :], setB[2, :], s=3)
+
     xlim(-0.6, 0.6)
     ylim(-0.6, 0.6)
     return setA
