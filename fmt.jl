@@ -3,6 +3,7 @@ using StaticArrays
 using StaticArrays.ImmutableArrays
 #using PyPlot
 include("geometry.jl")
+include("double_integrator.jl")
 const Vec2f = SVector{2, Float64}
 const Vec4f = SVector{4, Float64}
 
@@ -84,6 +85,7 @@ mutable struct FMTree
         cost = zeros(N)
         parent = ones(Int, N)
         bool_unvisit = trues(N)
+        bool_unvisit[1] = false
         bool_closed = falses(N)
         bool_open = falses(N)
         bool_open[1] = true
@@ -124,7 +126,7 @@ function cleanup(this::FMTree)
     this.bool_closed = falses(this.N)
 end
 
-function find_near_idx(s_center::Vec4f, Sset::Vector{Vec4f}, idxlst::Vector{Int64}, r::Float64)
+function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec4f, r::Float64)
     idxset_near = Int64[]
     distset_near = Float64[]
     for idx in idxlst
@@ -136,23 +138,9 @@ function find_near_idx(s_center::Vec4f, Sset::Vector{Vec4f}, idxlst::Vector{Int6
     end
     return idxset_near, distset_near
 end
-
-function find_near_idx(s_center::Vec4f, Sset::Vector{Vec4f}, idxlst::Vector{Int64}, r::Float64, ForR::Symbol)
-    idxset_near = Int64[]
-    distset_near = Float64[]
-    for idx in idxlst
-        @inbounds dist = dist2(s_center, Sset[idx])
-        if dist<r
-            push!(idxset_near, idx)
-            push!(distset_near, dist)
-        end
-    end
-    return idxset_near, distset_near
-end
-
 
 function extend(this::FMTree)
-    r = 0.1
+    r = 0.8
 
     #select the lowest-cost node 
     idxset_open = findall(this.bool_open)
@@ -160,12 +148,17 @@ function extend(this::FMTree)
 
     #find nears within Vunvisit
     idxset_unvisit = findall(this.bool_unvisit)
-    idxset_near, distset_near = find_near_idx(this.Pset[idx_lowest], this.Pset, idxset_unvisit, r)
+    #idxset_near, distset_near = find_near_idx(this.Pset[idx_lowest], this.Pset, idxset_unvisit, r)
+    idxset_near, distset_near = filter_reachable(this.Pset, idxset_unvisit,
+                                                 this.Pset[idx_lowest], r, :F)
+
    
     #find 
     for idx_near in idxset_near
         #serach cand points for connection
-        idxset_cand, distset_cand = find_near_idx(this.Pset[idx_near], this.Pset, idxset_open, r)
+        #idxset_cand, distset_cand = find_near_idx(this.Pset[idx_near], this.Pset, idxset_open, r)
+        idxset_cand, distset_cand = filter_reachable(this.Pset, idxset_open, 
+                                                  this.Pset[idx_near], r, :B)
         isempty(idxset_cand) && return
 
         #cost-optimal connection
@@ -202,9 +195,10 @@ wor = World(x_min, x_max, v_min, v_max, Pset)
 
 s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
 s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
-t = FMTree(s_init, s_goal, 3000, wor, dist2)
+t = FMTree(s_init, s_goal, 6000, wor, dist2)
 
 @time for i=1:2000
+
     extend(t)
 end
 

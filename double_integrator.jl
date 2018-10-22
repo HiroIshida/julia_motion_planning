@@ -70,6 +70,7 @@ function backward_reachable_box(x0::Vec2f, v0::Vec2f, r::Float64)
     return xmin, xmax, vmin, vmax
 end
 
+"""
 function filter_freachable_exact(s_set, s_c, r)
     s_set_filtered = Vec4f[]
     for s in s_set
@@ -81,6 +82,7 @@ function filter_freachable_exact(s_set, s_c, r)
     end
     return s_set_filtered
 end
+"""
 
 function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64}, 
                           s_c::Vec4f, r::Float64, ForR::Symbol)
@@ -98,31 +100,33 @@ function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64},
         @inbounds !(vmin[2]<s[4]<vmax[2]) && return false
         return true
     end
-
-    idx_filtered = Int64[]
+    idx_filter = Int64[]
+    dist_filter = Float64[]
     for idx in idxset
         @inbounds s = Sset[idx]
         if isinside(s)
-            if ForR==:B
-                cost_optimal(s, s_c)<r && push!(idx_filtered, idx)
-            else
-                cost_optimal(s_c, s)<r && push!(idx_filtered, idx)
+            cost = (ForR==:B) ? cost_optimal(s, s_c) : cost_optimal(s_c, s)
+            if cost < r
+                push!(idx_filter, idx)
+                push!(dist_filter, cost)
             end
         end
     end
-    return idx_filtered
+    return idx_filter, dist_filter 
 end
 
+function trajectory(s0, s1, tau)
+
 function test()
-    N = 10^6
+    N = 10^4
     s_set = Vec4f[]
     for i = 1:N
-        push!(s_set, Vec4f(rand()-0.5, rand()-0.5, 3*rand()-1.5, 3*rand()-1.5))
+        push!(s_set, Vec4f(rand()-0.5, rand()-0.5, 3*rand()-0.5, 3*rand()-0.5))
     end
     s_c = Vec4f(+0, +0, 0.2, 0.2)
     idxset = [x for x in 1:N]
-    idx_for = filter_reachable(s_set, idxset, s_c, 1.0, :F)
-    idx_back = filter_reachable(s_set, idxset, s_c, 1.0, :B)
+    idx_for, trash = filter_reachable(s_set, idxset, s_c, 1.2, :F)
+    idx_back, trash = filter_reachable(s_set, idxset, s_c, 1.2, :B)
     s_for = s_set[idx_for]
     s_back = s_set[idx_back]
 
