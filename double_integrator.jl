@@ -116,7 +116,7 @@ function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64},
 end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013), Eq.(20)
-function trajectory(s0::Vec4f, s1::Vec4f, tau)
+function show_trajectory(s0::Vec4f, s1::Vec4f, tau, N_split = 20)
     x0 = Vec2f(s0[1:2])
     v0 = Vec2f(s0[3:4])
     x1 = Vec2f(s1[1:2])
@@ -135,8 +135,15 @@ function trajectory(s0::Vec4f, s1::Vec4f, tau)
         return  M_left*s1 + M_right*d
     end
 
-    return f
+    vert = zeros(4, N_split+1)
+    for n in 1:N_split+1
+        t = (n-1)*tau/N_split
+        vert[:, n] = f(t)
+    end
+    plot(vert[1, :], vert[2, :])
 end
+
+
 
 function test()
     N = 10^4
@@ -167,18 +174,10 @@ function test()
     return setA
 end
 
-"""
-s0 = Vec4f(0, 0, 0, 0) 
-s1 = Vec4f(0.2, 0.2, -0.5, 0)
-f =trajectory(s0, s1, 1.2)
-
-N = 30
-data = zeros(4, N)
-for i=1:N
-    t = i*1.2/N
-    data[:, i] = f(t)
+function test_connection()
+    s0 = Vec4f(0, 0, 0, 0) 
+    s1 = Vec4f(0.2, 0.2, -0.5, 0)
+    show_trajectory(s0, s1, 1)
 end
-plot(data[1, :], data[2, :])
-"""
 
 
