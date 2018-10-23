@@ -116,34 +116,35 @@ function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64},
 end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013), Eq.(20)
-function show_trajectory(s0::Vec4f, s1::Vec4f, tau, N_split = 20)
-    x0 = Vec2f(s0[1:2])
-    v0 = Vec2f(s0[3:4])
-    x1 = Vec2f(s1[1:2])
-    v1 = Vec2f(s1[3:4])
+function gen_trajectory(s0::Vec4f, s1::Vec4f, tau, N_split = 10)
+    @views x0 = Vec2f(s0[1:2])
+    @views v0 = Vec2f(s0[3:4])
+    @views x1 = Vec2f(s1[1:2])
+    @views v1 = Vec2f(s1[3:4])
     x01 = x1 - x0
     v01 = v1 - v0
-    d = Vec4f([-6*v01/tau^2 + 12*(-6*tau*v0+x01)/tau^3;
+    d = Vec4f([-6*v01/tau^2 + 12*(-tau*v0+x01)/tau^3;
                4*v01/tau - 6*(-tau*v0+x01)/tau^2])
-
-    function f(t)
-        t_dif = t - tau
+    @inline function f(t)
+        s = t - tau
         eye = Matrix{Int}(I, 2, 2)
-        M_left = vcat(hcat(eye, eye*t_dif), hcat(eye*0, eye))
-        M_right = vcat(hcat(eye*(-t_dif^3)*(1.0/6.0), eye*t_dif^2*0.5),
-                       hcat(eye*(-t_dif^2*0.5), eye*t_dif))
+        @fastmath M_left = vcat(hcat(eye, eye*s), hcat(eye*0, eye))
+        @fastmath M_right = vcat(hcat(eye*(-s^3)*(1.0/6.0), eye*s^2*0.5),
+                       hcat(eye*(-s^2*0.5), eye*s))
         return  M_left*s1 + M_right*d
     end
-
     vert = zeros(4, N_split+1)
     for n in 1:N_split+1
         t = (n-1)*tau/N_split
         vert[:, n] = f(t)
     end
-    plot(vert[1, :], vert[2, :])
+    return vert
 end
 
-
+function show_trajectory(s0, s1, tau, N_split = 20)
+    vert =  gen_trajectory(s0, s1, tau, N_split)
+    plot(vert[1, :], vert[2, :], "k-")
+end
 
 function test()
     N = 10^4
@@ -175,9 +176,12 @@ function test()
 end
 
 function test_connection()
-    s0 = Vec4f(0, 0, 0, 0) 
-    s1 = Vec4f(0.2, 0.2, -0.5, 0)
-    show_trajectory(s0, s1, 1)
+    """
+    s0 = Vec4f(0.17, 0.08, 0.19, -0.06) 
+    s1 = Vec4f(0.22, 0.03, 0.139, -0.2719)
+    """
+    s0 = Vec4f(0.0, 0.0, 0.3, 0.0)
+    s1 = Vec4f(0.1, 0.1, -0.1, -0.01)
+    show_trajectory(s0, s1, 0.5)
 end
-
-
+#test_connection()

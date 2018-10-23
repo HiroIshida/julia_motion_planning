@@ -1,13 +1,13 @@
 using LinearAlgebra
 using StaticArrays
-using StaticArrays.ImmutableArrays
+const Vec2f = SVector{2, Float64}
+const Vec4f = SVector{4, Float64}
+
 #using PyPlot
 include("geometry.jl")
 include("world.jl")
 include("double_integrator.jl")
 
-const Vec2f = SVector{2, Float64}
-const Vec4f = SVector{4, Float64}
 
 @inbounds @inline dist2(p, q)::Float64 = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
 # FMTree class
@@ -63,7 +63,8 @@ function show(this::FMTree)
     idxset_open = findall(this.bool_open)
     idxset_closed = findall(this.bool_closed)
     idxset_unvisit = findall(this.bool_unvisit)
-    idxset_tree = union(idxset_open, idxset_closed)
+    idxset_tree = setdiff(union(idxset_open, idxset_closed), [1])
+    """
     for idx in idxset_tree
         p1 = mat[:, idx]
         p2 = mat[:, this.parent[idx]]
@@ -71,11 +72,21 @@ function show(this::FMTree)
         y = [p1[2], p2[2]]
         plot(x, y, c=:black, linewidth=1)
     end
+    """
+    for idx in idxset_tree
+        s0 = this.Pset[this.parent[idx]]
+        s1 = this.Pset[idx]
+        tau = this.time[idx]
+        show_trajectory(s0, s1, tau)
+        println("fuck")
+    end
+    """
     scatter(mat[1, idxset_open], mat[2, idxset_open], c=:green, s=4)
     scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:black, s=5)
     scatter(mat[1, idxset_unvisit], mat[2, idxset_unvisit], c=:orange, s=5)
     xlim(this.world.x_min[1]-0.05, this.world.x_max[1]+0.05)
     ylim(this.world.x_min[2]-0.05, this.world.x_max[2]+0.05)
+    """
 end
 
 function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec4f, r::Float64)
@@ -92,7 +103,7 @@ function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec
 end
 
 function extend(this::FMTree)
-    r = 0.8
+    r = 1.0
 
     idxset_open = findall(this.bool_open)
     idxset_unvisit = findall(this.bool_unvisit)
