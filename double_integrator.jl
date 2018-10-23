@@ -40,7 +40,7 @@ end
     t_min = 0.0
     t_max = 10.0
     t_star = bisection_newton(d_cost, dd_cost, t_min, t_max)
-    return cost(t_star)
+    return cost(t_star), t_star
 end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013)
@@ -100,17 +100,19 @@ function filter_reachable(Sset::Vector{Vec4f}, idxset::Vector{Int64},
     end
     idx_filter = Int64[]
     dist_filter = Float64[]
+    time_filter = Float64[]
     for idx in idxset
         @inbounds s = Sset[idx]
         if isinside(s)
-            cost = (ForR==:B) ? cost_optimal(s, s_c) : cost_optimal(s_c, s)
+            cost, tau = (ForR==:B) ? cost_optimal(s, s_c) : cost_optimal(s_c, s)
             if cost < r
                 push!(idx_filter, idx)
                 push!(dist_filter, cost)
+                push!(time_filter, tau)
             end
         end
     end
-    return idx_filter, dist_filter 
+    return idx_filter, dist_filter, time_filter
 end
 
 # see ICRA paper: D.J.Webb et al Kinodynamic RRT* (2013), Eq.(20)
@@ -144,7 +146,7 @@ function test()
     end
     s_c = Vec4f(+0, +0, 0.2, 0.2)
     idxset = [x for x in 1:N]
-    idx_for, trash = filter_reachable(s_set, idxset, s_c, 1.2, :F)
+    idx_for, trash, _ = filter_reachable(s_set, idxset, s_c, 1.2, :F)
     idx_back, trash = filter_reachable(s_set, idxset, s_c, 1.2, :B)
     s_for = s_set[idx_for]
     s_back = s_set[idx_back]

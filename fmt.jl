@@ -3,56 +3,13 @@ using StaticArrays
 using StaticArrays.ImmutableArrays
 #using PyPlot
 include("geometry.jl")
+include("world.jl")
 include("double_integrator.jl")
+
 const Vec2f = SVector{2, Float64}
 const Vec4f = SVector{4, Float64}
 
 @inbounds @inline dist2(p, q)::Float64 = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
-
-mutable struct World
-    x_min
-    x_max
-    v_min
-    v_max
-    Pset::Vector{Polygonic}
-    function World(x_min, x_max, v_min, v_max, Pset)
-        new(x_min, x_max, v_min, v_max, Pset)
-    end
-end
-
-@inline function isValid(this::World, s_q::Vec4f)
-    # check if the sampled point is inside the world"
-    !(this.x_min[1]<s_q[1]<this.x_max[1]) && return false
-    !(this.x_min[2]<s_q[2]<this.x_max[2]) && return false
-    !(this.v_min[1]<s_q[3]<this.v_max[1]) && return false
-    !(this.v_min[2]<s_q[4]<this.v_max[2]) && return false
-    for P in this.Pset
-        isInside(P, Vec2f(s_q[1:2])) && return false
-    end
-    return true
-end
-
-@inline function isIntersect(this::World, q1::Vec4f, q2::Vec4f)
-    for P in this.Pset
-        isIntersect(P, q1, q2) && return true
-    end
-    return false
-end
-
-function show(this::World)
-    p1 = [this.x_min[1], this.x_min[2]]
-    p2 = [this.x_min[1], this.x_max[2]]
-    p3 = [this.x_max[1], this.x_max[2]]
-    p4 = [this.x_max[1], this.x_min[2]]
-    plot([p1[1], p2[1]], [p1[2], p2[2]], "r-")
-    plot([p2[1], p3[1]], [p2[2], p3[2]], "r-")
-    plot([p3[1], p4[1]], [p3[2], p4[2]], "r-")
-    plot([p4[1], p1[1]], [p4[2], p1[2]], "r-")
-    for P in this.Pset
-        show(P)
-    end
-end
-
 # FMTree class
 mutable struct FMTree
     s_init::Vec4f
@@ -60,7 +17,7 @@ mutable struct FMTree
     N #number of samples
     Pset::Vector{Vec4f}
     cost::Vector{Float64} #cost 
-    time::Vector{Float64}
+    time::Vector{Float64} #optimal time to connect one node to its root node
     parent::Vector{Int64} 
     bool_unvisit::BitVector #logical value for Vunvisit
     bool_open::BitVector #logical value for Open
@@ -141,22 +98,21 @@ function extend(this::FMTree)
     idxset_unvisit = findall(this.bool_unvisit)
 
     idx_lowest = idxset_open[findmin(this.cost[idxset_open])[2]]
-
-    idxset_near, distset_near = filter_reachable(this.Pset, idxset_unvisit,
-                                                 this.Pset[idx_lowest], r, :F)
+    idxset_near, _, _ = filter_reachable(this.Pset, idxset_unvisit,
+                                      this.Pset[idx_lowest], r, :F)
 
     for idx_near in idxset_near
-        idxset_cand, distset_cand = filter_reachable(this.Pset, idxset_open,
+        idxset_cand, distset_cand, timeset_cand = filter_reachable(this.Pset, idxset_open,
                                                      this.Pset[idx_near], r, :B)
         isempty(idxset_cand) && return
-
-        #cost-optimal connection
         cost_new, idx_costmin = findmin(this.cost[idxset_cand] + distset_cand)
+        time_new = timeset_cand[idx_costmin] # optimal time for new connection
         idx_parent = idxset_cand[idx_costmin]
         if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
             this.bool_unvisit[idx_near] = false
             this.bool_open[idx_near] = true
             this.cost[idx_near] = cost_new
+            this.time[idx_near] = time_new
             this.parent[idx_near] = idx_parent
         end
     end
