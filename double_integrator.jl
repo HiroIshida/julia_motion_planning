@@ -165,6 +165,7 @@ function test()
     return setA
 end
 
+"""
 s0 = Vec4f(0, 0, 0, 0) 
 s1 = Vec4f(0.2, 0.2, -0.5, 0)
 f =trajectory(s0, s1, 1.2)
@@ -176,5 +177,6 @@ for i=1:N
     data[:, i] = f(t)
 end
 plot(data[1, :], data[2, :])
+"""
 
 

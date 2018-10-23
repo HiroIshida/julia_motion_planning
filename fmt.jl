@@ -21,6 +21,7 @@ mutable struct World
 end
 
 @inline function isValid(this::World, s_q::Vec4f)
+    # check if the sampled point is inside the world"
     !(this.x_min[1]<s_q[1]<this.x_max[1]) && return false
     !(this.x_min[2]<s_q[2]<this.x_max[2]) && return false
     !(this.v_min[1]<s_q[3]<this.v_max[1]) && return false
@@ -59,14 +60,14 @@ mutable struct FMTree
     N #number of samples
     Pset::Vector{Vec4f}
     cost::Vector{Float64} #cost 
+    time::Vector{Float64}
     parent::Vector{Int64} 
     bool_unvisit::BitVector #logical value for Vunvisit
     bool_open::BitVector #logical value for Open
     bool_closed::BitVector #logical value for Open
     world::World # simulation world config
-    metric
 
-    function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world, metric)
+    function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
         Pset = Vec4f[]
         push!(Pset, s_init)
         myrn(min, max) = min + (max-min)*rand()
@@ -83,6 +84,7 @@ mutable struct FMTree
             end
         end
         cost = zeros(N)
+        time = zeros(N)
         parent = ones(Int, N)
         bool_unvisit = trues(N)
         bool_unvisit[1] = false
@@ -90,7 +92,7 @@ mutable struct FMTree
         bool_open = falses(N)
         bool_open[1] = true
         new(s_init, s_goal,
-            N, Pset, cost, parent, bool_unvisit, bool_open, bool_closed, world, metric)
+            N, Pset, cost, time, parent, bool_unvisit, bool_open, bool_closed, world)
     end
 end
 
@@ -119,13 +121,6 @@ function show(this::FMTree)
     ylim(this.world.x_min[2]-0.05, this.world.x_max[2]+0.05)
 end
 
-function cleanup(this::FMTree)
-    this.cost = zeros(this.N)
-    this.bool_open = falses(this.N); this.bool_open[1] = true
-    this.bool_unvisit = trues(this.N)
-    this.bool_closed = falses(this.N)
-end
-
 function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec4f, r::Float64)
     idxset_near = Int64[]
     distset_near = Float64[]
@@ -142,29 +137,22 @@ end
 function extend(this::FMTree)
     r = 0.8
 
-    #select the lowest-cost node 
     idxset_open = findall(this.bool_open)
+    idxset_unvisit = findall(this.bool_unvisit)
+
     idx_lowest = idxset_open[findmin(this.cost[idxset_open])[2]]
 
-    #find nears within Vunvisit
-    idxset_unvisit = findall(this.bool_unvisit)
-    #idxset_near, distset_near = find_near_idx(this.Pset[idx_lowest], this.Pset, idxset_unvisit, r)
     idxset_near, distset_near = filter_reachable(this.Pset, idxset_unvisit,
                                                  this.Pset[idx_lowest], r, :F)
 
-   
-    #find 
     for idx_near in idxset_near
-        #serach cand points for connection
-        #idxset_cand, distset_cand = find_near_idx(this.Pset[idx_near], this.Pset, idxset_open, r)
-        idxset_cand, distset_cand = filter_reachable(this.Pset, idxset_open, 
-                                                  this.Pset[idx_near], r, :B)
+        idxset_cand, distset_cand = filter_reachable(this.Pset, idxset_open,
+                                                     this.Pset[idx_near], r, :B)
         isempty(idxset_cand) && return
 
         #cost-optimal connection
-        tmp = findmin(this.cost[idxset_cand] + distset_cand)
-        cost_new = tmp[1];
-        idx_parent = idxset_cand[tmp[2]]
+        cost_new, idx_costmin = findmin(this.cost[idxset_cand] + distset_cand)
+        idx_parent = idxset_cand[idx_costmin]
         if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
             this.bool_unvisit[idx_near] = false
             this.bool_open[idx_near] = true
@@ -172,7 +160,6 @@ function extend(this::FMTree)
             this.parent[idx_near] = idx_parent
         end
     end
-
     this.bool_open[idx_lowest] = false
     this.bool_closed[idx_lowest] = true
 end
@@ -195,10 +182,9 @@ wor = World(x_min, x_max, v_min, v_max, Pset)
 
 s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
 s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
-t = FMTree(s_init, s_goal, 6000, wor, dist2)
+t = FMTree(s_init, s_goal, 3000, wor)
 
 @time for i=1:2000
-
     extend(t)
 end
 
