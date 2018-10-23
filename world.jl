@@ -42,10 +42,10 @@ function show(this::World)
     p2 = [this.x_min[1], this.x_max[2]]
     p3 = [this.x_max[1], this.x_max[2]]
     p4 = [this.x_max[1], this.x_min[2]]
-    plot([p1[1], p2[1]], [p1[2], p2[2]], "r-")
-    plot([p2[1], p3[1]], [p2[2], p3[2]], "r-")
-    plot([p3[1], p4[1]], [p3[2], p4[2]], "r-")
-    plot([p4[1], p1[1]], [p4[2], p1[2]], "r-")
+    plot([p1[1], p2[1]], [p1[2], p2[2]], "k-")
+    plot([p2[1], p3[1]], [p2[2], p3[2]], "k-")
+    plot([p3[1], p4[1]], [p3[2], p4[2]], "k-")
+    plot([p4[1], p1[1]], [p4[2], p1[2]], "k-")
     for P in this.Pset
         show(P)
     end

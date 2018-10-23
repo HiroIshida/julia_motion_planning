@@ -74,7 +74,7 @@ function show(this::FMTree)
         plot(x, y, c=:black, linewidth=1)
     end
     """
-    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:gray, s=2)
+    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:lime, s=2)
     scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:gray, s=2)
     #scatter(mat[1, idxset_unvisit], mat[2, idxset_unvisit], c=:orange, s=5)
     for idx in idxset_tree
@@ -120,7 +120,7 @@ function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec
 end
 
 function extend(this::FMTree)
-    r = 1.0
+    r = 1.2
 
     idxset_open = findall(this.bool_open)
     idxset_unvisit = findall(this.bool_unvisit)
@@ -157,8 +157,12 @@ v2 = (0.5, 0.5)
 v2 = (0.2, 0.5)
 
 #Pset = [Polygon([[0.2, 0.2], [0.4, 0.2], [0.3, 0.3]])]
-Pset = [Rectangle([0.2, 0.5], 0.05, 0.8),
-        Rectangle([0.4, 0.5], 0.05, 0.8)]
+Pset = [Rectangle([0.2, 0.3], 0.2, 0.2),
+        Rectangle([0.5, 0.5], 0.2, 0.3),
+        Rectangle([0.8, 0.3], 0.2, 0.1), 
+        Rectangle([0.8, 0.6], 0.15, 0.2),
+        Rectangle([0.2, 0.7], 0.1, 0.4),
+        Rectangle([0.2, 0.7], 0.1, 0.4)]
         
 x_min = [0, 0]
 x_max = [1.0, 1.0]
@@ -168,7 +172,7 @@ wor = World(x_min, x_max, v_min, v_max, Pset)
 
 s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
 s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
-t = FMTree(s_init, s_goal, 6000, wor)
+t = FMTree(s_init, s_goal, 3000, wor)
 idx_solution = @time solve(t)
 
 show(t)
@@ -176,7 +180,7 @@ for idx in idx_solution
     s0 = t.Pset[t.parent[idx]]
     s1 = t.Pset[idx]
     tau = t.time[idx]
-    show_trajectory(s0, s1, tau, 20, :blue, 2.0)
+    show_trajectory(s0, s1, tau, 20, :blue, 1.5)
 end
 
 
