@@ -21,12 +21,21 @@ end
     return true
 end
 
+@inline function isValid(this::World, q_set::Vector{Vec4f})
+    # basically q_set is a set of trajectory waypoints
+    for q in q_set
+        !isValid(this, q) && return false
+    end
+    return true
+end
+
 @inline function isIntersect(this::World, q1::Vec4f, q2::Vec4f)
     for P in this.Pset
         isIntersect(P, q1, q2) && return true
     end
     return false
 end
+
 
 function show(this::World)
     p1 = [this.x_min[1], this.x_min[2]]

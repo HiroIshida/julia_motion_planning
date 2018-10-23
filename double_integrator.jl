@@ -141,13 +141,13 @@ function gen_trajectory(s0::Vec4f, s1::Vec4f, tau, N_split = 10)
     return waypoints
 end
 
-function show_trajectory(s0, s1, tau, N_split = 20)
+function show_trajectory(s0, s1, tau, N_split = 20, c_ = :gray, linewidth_ = 0.5)
     waypoints =  gen_trajectory(s0, s1, tau, N_split)
     M = zeros(4, N_split+1)
     for i in 1:N_split+1
         @inbounds M[:, i] = waypoints[i]
     end
-    @views plot(M[1, :], M[2, :], "k-")
+    @views plot(M[1, :], M[2, :], c=c_, linewidth = linewidth_)
 end
 
 function test()

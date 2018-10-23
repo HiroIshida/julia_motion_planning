@@ -26,9 +26,9 @@ mutable struct FMTree
 
     function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
         Pset = Vec4f[]
-        push!(Pset, s_init)
+        push!(Pset, s_init) #inply idx_init = 1 
         myrn(min, max) = min + (max-min)*rand()
-        for n = 2:N
+        for n = 1:N-2
             while(true)
                 p = Vec4f(myrn(world.x_min[1], world.x_max[1]), 
                           myrn(world.x_min[2], world.x_max[2]),
@@ -40,6 +40,7 @@ mutable struct FMTree
                 end
             end
         end
+        push!(Pset, s_goal) #inply idx_goal = N [last]
         cost = zeros(N)
         time = zeros(N)
         parent = ones(Int, N)
@@ -73,6 +74,9 @@ function show(this::FMTree)
         plot(x, y, c=:black, linewidth=1)
     end
     """
+    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:gray, s=2)
+    scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:gray, s=2)
+    #scatter(mat[1, idxset_unvisit], mat[2, idxset_unvisit], c=:orange, s=5)
     for idx in idxset_tree
         s0 = this.Pset[this.parent[idx]]
         s1 = this.Pset[idx]
@@ -80,13 +84,26 @@ function show(this::FMTree)
         show_trajectory(s0, s1, tau)
         println("fuck")
     end
-    """
-    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:green, s=4)
-    scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:black, s=5)
-    scatter(mat[1, idxset_unvisit], mat[2, idxset_unvisit], c=:orange, s=5)
     xlim(this.world.x_min[1]-0.05, this.world.x_max[1]+0.05)
     ylim(this.world.x_min[2]-0.05, this.world.x_max[2]+0.05)
-    """
+end
+
+function solve(this::FMTree)
+    itr = 0
+    while(true)
+        println(itr+=1)
+        extend(this)
+        !this.bool_unvisit[end] && break
+    end
+
+    idx = this.N
+    idx_solution = Int64[idx]
+    while(true)
+        idx = this.parent[idx]
+        push!(idx_solution, idx)
+        idx == 1 && break
+    end
+    return idx_solution
 end
 
 function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec4f, r::Float64)
@@ -119,7 +136,9 @@ function extend(this::FMTree)
         cost_new, idx_costmin = findmin(this.cost[idxset_cand] + distset_cand)
         time_new = timeset_cand[idx_costmin] # optimal time for new connection
         idx_parent = idxset_cand[idx_costmin]
-        if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
+        waypoints = gen_trajectory(this.Pset[idx_parent], this.Pset[idx_near], time_new, 20)
+        if isValid(this.world, waypoints)
+        #if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
             this.bool_unvisit[idx_near] = false
             this.bool_open[idx_near] = true
             this.cost[idx_near] = cost_new
@@ -149,12 +168,16 @@ wor = World(x_min, x_max, v_min, v_max, Pset)
 
 s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
 s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
-t = FMTree(s_init, s_goal, 3000, wor)
+t = FMTree(s_init, s_goal, 6000, wor)
+idx_solution = @time solve(t)
 
-@time for i=1:2000
-    extend(t)
+show(t)
+for idx in idx_solution
+    s0 = t.Pset[t.parent[idx]]
+    s1 = t.Pset[idx]
+    tau = t.time[idx]
+    show_trajectory(s0, s1, tau, 20, :blue, 2.0)
 end
-
 
 
 
