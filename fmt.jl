@@ -23,6 +23,8 @@ mutable struct FMTree
     bool_open::BitVector #logical value for Open
     bool_closed::BitVector #logical value for Open
     world::World # simulation world config
+    itr::Int64
+    
 
     function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
         Pset = Vec4f[]
@@ -50,7 +52,7 @@ mutable struct FMTree
         bool_open = falses(N)
         bool_open[1] = true
         new(s_init, s_goal,
-            N, Pset, cost, time, parent, bool_unvisit, bool_open, bool_closed, world)
+            N, Pset, cost, time, parent, bool_unvisit, bool_open, bool_closed, world, 0)
     end
 end
 
@@ -65,16 +67,9 @@ function show(this::FMTree)
     idxset_closed = findall(this.bool_closed)
     idxset_unvisit = findall(this.bool_unvisit)
     idxset_tree = setdiff(union(idxset_open, idxset_closed), [1])
-    """
-    for idx in idxset_tree
-        p1 = mat[:, idx]
-        p2 = mat[:, this.parent[idx]]
-        x = [p1[1], p2[1]]
-        y = [p1[2], p2[2]]
-        plot(x, y, c=:black, linewidth=1)
-    end
-    """
-    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:lime, s=2)
+    scatter(mat[1, 1], mat[2, 1], c=:blue, s=10, zorder = 100)
+    scatter(mat[1, end], mat[2, end], c=:blue, s=10, zorder = 101)
+    scatter(mat[1, idxset_open], mat[2, idxset_open], c=:gray, s=2)
     scatter(mat[1, idxset_closed], mat[2, idxset_closed], c=:gray, s=2)
     #scatter(mat[1, idxset_unvisit], mat[2, idxset_unvisit], c=:orange, s=5)
     for idx in idxset_tree
@@ -82,19 +77,28 @@ function show(this::FMTree)
         s1 = this.Pset[idx]
         tau = this.time[idx]
         show_trajectory(s0, s1, tau)
-        println("fuck")
+        println("drawing")
     end
+
+    scatter(mat[1, 1], mat[2, 1], c=:blue, s=20, zorder = 100)
+    scatter(mat[1, end], mat[2, end], c=:blue, s=20, zorder = 101)
+
     xlim(this.world.x_min[1]-0.05, this.world.x_max[1]+0.05)
     ylim(this.world.x_min[2]-0.05, this.world.x_max[2]+0.05)
 end
 
 function solve(this::FMTree)
-    itr = 0
+    println("start solving")
     while(true)
-        println(itr+=1)
         extend(this)
+        if ((this.itr<100) & (this.itr % 20 == 1)) || (this.itr % 200==1)
+            close()
+            show(this)
+            savefig("fig"*string(this.itr)*".png")
+        end
         !this.bool_unvisit[end] && break
     end
+    close()
 
     idx = this.N
     idx_solution = Int64[idx]
@@ -103,23 +107,12 @@ function solve(this::FMTree)
         push!(idx_solution, idx)
         idx == 1 && break
     end
+    println("finish solving")
     return idx_solution
 end
 
-function find_near_idx(Sset::Vector{Vec4f}, idxlst::Vector{Int64}, s_center::Vec4f, r::Float64)
-    idxset_near = Int64[]
-    distset_near = Float64[]
-    for idx in idxlst
-        @inbounds dist = dist2(s_center, Sset[idx])
-        if dist<r
-            push!(idxset_near, idx)
-            push!(distset_near, dist)
-        end
-    end
-    return idxset_near, distset_near
-end
-
 function extend(this::FMTree)
+    this.itr += 1
     r = 1.2
 
     idxset_open = findall(this.bool_open)
@@ -152,11 +145,6 @@ end
 
 
 
-v1 = (0.25, 0.25)
-v2 = (0.5, 0.5)
-v2 = (0.2, 0.5)
-
-#Pset = [Polygon([[0.2, 0.2], [0.4, 0.2], [0.3, 0.3]])]
 Pset = [Rectangle([0.2, 0.3], 0.2, 0.2),
         Rectangle([0.5, 0.5], 0.2, 0.3),
         Rectangle([0.8, 0.3], 0.2, 0.1), 
@@ -181,6 +169,7 @@ for idx in idx_solution
     s1 = t.Pset[idx]
     tau = t.time[idx]
     show_trajectory(s0, s1, tau, 20, :blue, 1.5)
+    savefig("fig/finish.png")
 end
 
 
