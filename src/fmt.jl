@@ -1,14 +1,3 @@
-using LinearAlgebra
-using StaticArrays
-const Vec2f = SVector{2, Float64}
-const Vec4f = SVector{4, Float64}
-
-#using PyPlot
-include("geometry.jl")
-include("world.jl")
-include("double_integrator.jl")
-
-
 @inbounds @inline dist2(p, q)::Float64 = sqrt((p[1]-q[1])^2+(p[2]-q[2])^2)
 # FMTree class
 mutable struct FMTree
@@ -27,6 +16,7 @@ mutable struct FMTree
     
 
     function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
+        println("initializing fmt ...")
         Pset = Vec4f[]
         push!(Pset, s_init) #inply idx_init = 1 
         myrn(min, max) = min + (max-min)*rand()
@@ -51,12 +41,14 @@ mutable struct FMTree
         bool_closed = falses(N)
         bool_open = falses(N)
         bool_open[1] = true
+        println("finish initializing")
         new(s_init, s_goal,
             N, Pset, cost, time, parent, bool_unvisit, bool_open, bool_closed, world, 0)
     end
 end
 
 function show(this::FMTree)
+    println("drawing...")
     show(this.world)
     N = length(this.Pset)
     mat = zeros(2, N)
@@ -77,7 +69,6 @@ function show(this::FMTree)
         s1 = this.Pset[idx]
         tau = this.time[idx]
         show_trajectory(s0, s1, tau)
-        println("drawing")
     end
 
     scatter(mat[1, 1], mat[2, 1], c=:blue, s=20, zorder = 100)
@@ -85,21 +76,22 @@ function show(this::FMTree)
 
     xlim(this.world.x_min[1]-0.05, this.world.x_max[1]+0.05)
     ylim(this.world.x_min[2]-0.05, this.world.x_max[2]+0.05)
+    println("finish drawing")
 end
 
-function solve(this::FMTree)
+function solve(this::FMTree, with_savefig = false)
     println("start solving")
     while(true)
         extend(this)
-        if ((this.itr<100) & (this.itr % 20 == 1)) || (this.itr % 200==1)
-            close()
-            show(this)
-            savefig("fig"*string(this.itr)*".png")
+        if with_savefig
+            if ((this.itr<100) & (this.itr % 20 == 1)) || (this.itr % 200==1)
+                close()
+                show(this)
+                savefig("../fig/"*string(this.itr)*".png")
+            end
         end
         !this.bool_unvisit[end] && break
     end
-    close()
-
     idx = this.N
     idx_solution = Int64[idx]
     while(true)
@@ -113,7 +105,7 @@ end
 
 function extend(this::FMTree)
     this.itr += 1
-    r = 1.2
+    r = 1.0
 
     idxset_open = findall(this.bool_open)
     idxset_unvisit = findall(this.bool_unvisit)
@@ -129,7 +121,7 @@ function extend(this::FMTree)
         cost_new, idx_costmin = findmin(this.cost[idxset_cand] + distset_cand)
         time_new = timeset_cand[idx_costmin] # optimal time for new connection
         idx_parent = idxset_cand[idx_costmin]
-        waypoints = gen_trajectory(this.Pset[idx_parent], this.Pset[idx_near], time_new, 20)
+        waypoints = gen_trajectory(this.Pset[idx_parent], this.Pset[idx_near], time_new, 10)
         if isValid(this.world, waypoints)
         #if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
             this.bool_unvisit[idx_near] = false
@@ -142,39 +134,4 @@ function extend(this::FMTree)
     this.bool_open[idx_lowest] = false
     this.bool_closed[idx_lowest] = true
 end
-
-
-
-Pset = [Rectangle([0.2, 0.3], 0.2, 0.2),
-        Rectangle([0.5, 0.5], 0.2, 0.3),
-        Rectangle([0.8, 0.3], 0.2, 0.1), 
-        Rectangle([0.8, 0.6], 0.15, 0.2),
-        Rectangle([0.2, 0.7], 0.1, 0.4),
-        Rectangle([0.2, 0.7], 0.1, 0.4)]
-        
-x_min = [0, 0]
-x_max = [1.0, 1.0]
-v_min = [-0.5, -0.5]
-v_max = [0.5, 0.5]
-wor = World(x_min, x_max, v_min, v_max, Pset)
-
-s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
-s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
-t = FMTree(s_init, s_goal, 3000, wor)
-idx_solution = @time solve(t)
-
-show(t)
-for idx in idx_solution
-    s0 = t.Pset[t.parent[idx]]
-    s1 = t.Pset[idx]
-    tau = t.time[idx]
-    show_trajectory(s0, s1, tau, 20, :blue, 1.5)
-    savefig("fig/finish.png")
-end
-
-
-
-
-
-
 
