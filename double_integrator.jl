@@ -131,19 +131,23 @@ function gen_trajectory(s0::Vec4f, s1::Vec4f, tau, N_split = 10)
         @fastmath M_left = vcat(hcat(eye, eye*s), hcat(eye*0, eye))
         @fastmath M_right = vcat(hcat(eye*(-s^3)*(1.0/6.0), eye*s^2*0.5),
                        hcat(eye*(-s^2*0.5), eye*s))
-        return  M_left*s1 + M_right*d
+        return  Vec4f(M_left*s1 + M_right*d)
     end
-    vert = zeros(4, N_split+1)
+    waypoints = Vec4f[]
     for n in 1:N_split+1
         t = (n-1)*tau/N_split
-        vert[:, n] = f(t)
+        push!(waypoints, f(t))
     end
-    return vert
+    return waypoints
 end
 
 function show_trajectory(s0, s1, tau, N_split = 20)
-    vert =  gen_trajectory(s0, s1, tau, N_split)
-    plot(vert[1, :], vert[2, :], "k-")
+    waypoints =  gen_trajectory(s0, s1, tau, N_split)
+    M = zeros(4, N_split+1)
+    for i in 1:N_split+1
+        @inbounds M[:, i] = waypoints[i]
+    end
+    @views plot(M[1, :], M[2, :], "k-")
 end
 
 function test()
