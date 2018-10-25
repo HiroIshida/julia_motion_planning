@@ -4,18 +4,19 @@ mutable struct FMTree
     s_init::Vec4f
     s_goal::Vec4f
     N #number of samples
-    Pset::Vector{Vec4f}
+    Pset::Vector{Vec4f} # Point set
     cost::Vector{Float64} #cost 
-    time::Vector{Float64} #optimal time to connect one node to its root node
-    parent::Vector{Int64} 
+    time::Vector{Float64} #optimal time to connect one node to its parent node
+    parent::Vector{Int64} #parent node 
     bool_unvisit::BitVector #logical value for Vunvisit
     bool_open::BitVector #logical value for Open
-    bool_closed::BitVector #logical value for Open
+    bool_closed::BitVector #logical value for Closed
     world::World # simulation world config
-    itr::Int64
+    itr::Int64 # iteration num
     
 
     function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
+        # constructer: sampling valid point from the configurationspace
         println("initializing fmt ...")
         Pset = Vec4f[]
         push!(Pset, s_init) #inply idx_init = 1 
@@ -80,6 +81,8 @@ function show(this::FMTree)
 end
 
 function solve(this::FMTree, with_savefig = false)
+    # keep extending the node until the tree reaches the goal
+    println("please set with_savefig=false if you want to measure the computation time" )
     println("start solving")
     while(true)
         extend(this)
@@ -104,6 +107,7 @@ function solve(this::FMTree, with_savefig = false)
 end
 
 function extend(this::FMTree)
+    # extend node
     this.itr += 1
     r = 1.0
 
@@ -123,7 +127,6 @@ function extend(this::FMTree)
         idx_parent = idxset_cand[idx_costmin]
         waypoints = gen_trajectory(this.Pset[idx_parent], this.Pset[idx_near], time_new, 10)
         if isValid(this.world, waypoints)
-        #if ~isIntersect(this.world, this.Pset[idx_near], this.Pset[idx_parent])
             this.bool_unvisit[idx_near] = false
             this.bool_open[idx_near] = true
             this.cost[idx_near] = cost_new
