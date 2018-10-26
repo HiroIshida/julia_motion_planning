@@ -22,7 +22,8 @@ end
 end
 
 @inline function isValid(this::World, q_set::Vector{Vec4f})
-    # basically q_set is a set of trajectory waypoints
+    # check validity for multiple points.
+    # will be used for piecewize path consited of multiple points
     for q in q_set
         !isValid(this, q) && return false
     end
