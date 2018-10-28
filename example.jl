@@ -25,7 +25,7 @@ W = World(x_min, x_max, v_min, v_max, obstacle_set)
 s_init = Vec4f([0.1, 0.1, 0.0, 0.0])
 s_goal = Vec4f([0.9, 0.9, 0.0, 0.0])
 
-Nsample = 3000
+Nsample = 6000
 fmt = @time FMTree(s_init, s_goal, Nsample, W)
 
 with_savefig = false

@@ -36,13 +36,13 @@ end
 
 @inline function isInside(this::T, q::Vec2f) where {T<:Polygonic}
     # note: n'x = n'b
-    q_vec = [q[1]; q[2]]
+    @inbounds q_vec = [q[1]; q[2]]
     for n = 1:this.N
-        p1 = this.V[n]
-        n<this.N ? p2 = this.V[n+1] : p2 = this.V[1]
-        u = [p2[1]-p1[1]; p2[2]-p1[2]] #p2-p1
-        n = [0 1; -1 0]*u # normla vector
-        px = [q[1]-p1[1]; q[2]-p1[2]] # x-p1
+        @inbounds p1 = this.V[n]
+        @inbounds n<this.N ? p2 = this.V[n+1] : p2 = this.V[1]
+        @inbounds u = [p2[1]-p1[1]; p2[2]-p1[2]] #p2-p1
+        @inbounds n = [0 1; -1 0]*u # normla vector
+        @inbounds px = [q[1]-p1[1]; q[2]-p1[2]] # x-p1
         px'*n>0 && return false
     end
     return true
@@ -64,6 +64,13 @@ end
             p2=this.V[1]
         end
         isIntersect(p1, p2, q1, q2) && return true
+    end
+    return false
+end
+
+@inline function isIntersect(this::T, q_seq::Vector{Vec2f})::Bool where {T<:Polygonic}
+    for q in q_seq
+        isInside(this, q) && return true
     end
     return false
 end

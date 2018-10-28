@@ -11,10 +11,10 @@ end
 
 @inline function isValid(this::World, s_q::Vec4f)
     # check if the sampled point is inside the world"
-    !(this.x_min[1]<s_q[1]<this.x_max[1]) && return false
-    !(this.x_min[2]<s_q[2]<this.x_max[2]) && return false
-    !(this.v_min[1]<s_q[3]<this.v_max[1]) && return false
-    !(this.v_min[2]<s_q[4]<this.v_max[2]) && return false
+    @inbounds !(this.x_min[1]<s_q[1]<this.x_max[1]) && return false
+    @inbounds !(this.x_min[2]<s_q[2]<this.x_max[2]) && return false
+    @inbounds !(this.v_min[1]<s_q[3]<this.v_max[1]) && return false
+    @inbounds !(this.v_min[2]<s_q[4]<this.v_max[2]) && return false
     for P in this.Pset
         isInside(P, Vec2f(s_q[1:2])) && return false
     end

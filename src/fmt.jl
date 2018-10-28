@@ -13,7 +13,6 @@ mutable struct FMTree
     bool_closed::BitVector #logical value for Closed
     world::World # simulation world config
     itr::Int64 # iteration num
-    
 
     function FMTree(s_init::Vec4f, s_goal::Vec4f, N, world)
         # constructer: sampling valid point from the configurationspace
