@@ -4,7 +4,7 @@ using PyPlot
 const Vec2f = SVector{2, Float64}
 const Vec4f = SVector{4, Float64}
 
-include("src/geometry.jl")
+include("src/geometry/geometry.jl")
 include("src/world.jl")
 include("src/double_integrator.jl")
 include("src/fmt.jl")
