@@ -18,6 +18,7 @@ end
 end
 
 @inline function isIntersect(this::Sphere, x_seq::Vector{Vec2f})
+    """
     for i in 1:length(x_seq)-1
         @inbounds x0 = x_seq[i]
         @inbounds x1 = x_seq[i+1]
@@ -28,17 +29,44 @@ end
         d = norm(x0 + vv - this.c)
         d < this.r && return true
     end
+    """
+    for x in x_seq
+        isInside(this, x) && return true
+    end
     return false
 end
 
+function show(this::Sphere, color=:red)
+    for theta in 0:0.3:2π
+        x = this.c + this.r*Vec2f(cos(theta), sin(theta))
+        scatter(x[1], x[2], c=color)
+    end
+end
 
 
 """
-x_0 = SVector(-1.0, 1.)
-x_1 = SVector(0., 1.5)
-x_2 = SVector(1.0, 1.)
+function test()
+    x = Vec2f(-2., 1.6)
+    x_seq = Vec2f[x]
+    N = 30
+    for i in 0:N
+        dx = Vec2f(0.1, randn()*0.05)
+        global x = x .+ dx
+        push!(x_seq, x)
+    end
+    for i in 1:N
+        x0 = x_seq[i]
+        x1 = x_seq[i+1]
+        plot([x0[1], x1[1]], [x0[2], x1[2]], c = :black)
+    end
 
 
-s = Sphere(SVector(0., 0.), 1.3)
-isIntersect(s, [x_0, x_1, x_2])
+    x_0 = SVector(-1.0, 1.)
+    x_1 = SVector(0., 1.5)
+    x_2 = SVector(1.0, 1.)
+    s = Sphere(SVector(0., 0.), 1.3)
+    println(isIntersect(s, x_seq))
+    show(s)
+    println(s)
+end
 """
